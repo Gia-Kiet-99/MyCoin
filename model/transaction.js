@@ -73,6 +73,9 @@ function getTransactionId(transaction) {
 }
 
 const validateTransaction = (transaction, aUnspentTxOuts) => {
+  if (!isValidTransactionStructure(transaction)) {
+    return false;
+  }
   if (getTransactionId(transaction) !== transaction.id) {
     console.log('invalid tx id: ' + transaction.id);
     return false;
@@ -339,8 +342,8 @@ const isValidAddress = (address) => {
   return true;
 };
 
-module.exports =  {
+module.exports = {
   processTransactions, signTxIn, getTransactionId,
   UnspentTxOut, TxIn, TxOut, getCoinbaseTransaction, getPublicKey,
-  Transaction
+  Transaction, validateTransaction
 }
