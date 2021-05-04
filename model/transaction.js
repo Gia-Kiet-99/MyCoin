@@ -27,7 +27,7 @@ class TxIn {
    * @param {txOutIndex} txOutIndex 
    * @param {signature} signature 
    */
-  constructor(txOutId, txOutIndex, signature) {
+  constructor(txOutId, txOutIndex, signature = "") {
     this.txOutId = txOutId;
     this.txOutIndex = txOutIndex;
     this.signature = signature;
