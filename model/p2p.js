@@ -1,72 +1,112 @@
 const WebSocket = require('ws');
 
-const { getLatestBlock, getBlockChain, isValidBlockStructure, addBlockToChain, replaceChain } = require('./blockchain');
+const { getLatestBlock, getBlockChain,
+  isValidBlockStructure, addBlockToChain, replaceChain } = require('./blockchain');
+const { transaction } = require('./transaction');
+const { getTransactionPool } = require('./transaction-pool');
 
-const sockets = [];
+// const sockets = [];
 
 const MessageType = {
   QUERY_LATEST: 0,
   QUERY_ALL: 1,
-  RESPONSE_BLOCKCHAIN: 2
+  RESPONSE_BLOCKCHAIN: 2,
+  QUERY_TRANSACTION_POOL: 3,
+  RESPONSE_TRANSACTION_POOL: 4
 }
 
-class Message {
-  constructor(type, data) {
-    this.type = type;
-    this.data = data;
+// class Message {
+//   constructor(type, data) {
+//     this.type = type;
+//     this.data = data;
+//   }
+// }
+
+let server;
+function initP2PServer(port) {
+  if (!server) {
+    server = new WebSocket.Server({ port: port });
+    server.on('connection', (ws) => {
+      initConnection(ws);
+    });
+    console.log("Listening websocket p2p port on: " + port);
   }
 }
 
-function initP2PServer(port) {
-  const server = new WebSocket.Server({ port: port });
-  server.on('connection', (ws) => {
-    initConnection(ws);
-  });
-  console.log("Listening websocket p2p port on: " + port);
-}
-
 function getSockets() {
-  return sockets;
+  // return sockets;
+  return [...server.clients];
 }
 
 function initConnection(ws) {
-  sockets.push(ws);
+  // sockets.push(ws);
   initMessageHandler(ws);
   initErrorHandler(ws);
   write(ws, queryChainLengthMsg());
+
+  // query transaction pool only some time after chain query
+  setTimeout(() => {
+    broadcast(queryTransactionPoolMsg());
+  }, 500);
 }
 
 function initMessageHandler(ws) {
   ws.on('message', (data) => {
-    const message = JSON.parse(data);
-    if (message === null) {
-      console.log("Could not parse received JSON message: " + data);
-      return;
+    try {
+      const message = JSON.parse(data);
+      if (message === null) {
+        console.log("Could not parse received JSON message: " + data);
+        return;
+      }
+      console.log("Received message: " + JSON.stringify(message));
+      switch (message.type) {
+        case MessageType.QUERY_LATEST:
+          write(ws, responseLatestMsg());
+          break;
+        case MessageType.QUERY_ALL:
+          write(ws, responseChainMsg());
+          break;
+        case MessageType.RESPONSE_BLOCKCHAIN:
+          const receivedBlocks = JSON.parse(message.data);
+          if (receivedBlocks === null) {
+            console.log("Invalid blocks received:");
+            console.log(message.data);
+            break;
+          }
+          handleBlockChainResponse(receivedBlocks);
+          break;
+        case MessageType.QUERY_TRANSACTION_POOL:
+          write(ws, responseTransactionPoolMsg());
+          break;
+        case MessageType.RESPONSE_TRANSACTION_POOL:
+          const receivedTransactionPool = JSON.parse(message.data);
+          if (receivedTransactionPool === null) {
+            console.log("Invalid transaction received: " + JSON.parse(message.data));
+            break;
+          }
+          receivedTransactions.forEach(transaction => {
+            try {
+              handleReceivedTransaction(transaction);
+              // if no error is thrown, transaction was indeed added to the pool
+              // let's broadcast transaction pool
+              broadcastTransactionPool();
+            } catch (e) {
+              console.log(e.message);
+            }
+          });
+          break;
+      }
+    } catch (error) {
+      console.log('error in function initMessageHandler!', error);
+      // throw new Error()
     }
-    console.log("Received message: " + JSON.stringify(message));
-    switch (message.type) {
-      case MessageType.QUERY_LATEST:
-        write(ws, responseLatestMsg());
-        break;
-      case MessageType.QUERY_ALL:
-        write(ws, responseChainMsg());
-        break;
-      case MessageType.RESPONSE_BLOCKCHAIN:
-        const receivedBlocks = JSON.parse(message.data);
-        if (receivedBlocks === null) {
-          console.log("Invalid blocks received:");
-          console.log(message.data);
-        }
-        handleBlockChainResponse(receivedBlocks);
-        break;
-    }
-  })
+  });
 }
 
 function initErrorHandler(ws) {
   function closeConnection(websocket) {
     console.log("Connection fail to peer: " + websocket.url);
-    sockets.splice(sockets.indexOf(websocket), 1);
+    // sockets.splice(sockets.indexOf(websocket), 1);
   };
 
   ws.on('close', () => closeConnection(ws));
@@ -79,11 +119,15 @@ function write(ws, message) {
 }
 
 function broadcast(message) {
-  sockets.forEach(socket => write(socket, message));
+  server.clients.forEach(socket => write(socket, message));
 }
 
 function broadcastLatest() {
   broadcast(responseLatestMsg());
+}
+
+function broadcastTransactionPool() {
+  broadcast(responseTransactionPoolMsg());
 }
 
 
@@ -96,14 +140,31 @@ function queryAllMsg() {
   return { type: MessageType.QUERY_ALL, data: null };
 }
 
+function queryTransactionPoolMsg() {
+  return { type: MessageType.QUERY_TRANSACTION_POOL, data: null };
+}
+
 
 /*------------  Response message -----------*/
 function responseLatestMsg() {
-  return { type: MessageType.RESPONSE_BLOCKCHAIN, data: JSON.stringify([getLatestBlock()]) };
+  return {
+    type: MessageType.RESPONSE_BLOCKCHAIN,
+    data: JSON.stringify([getLatestBlock()])
+  };
 }
 
 function responseChainMsg() {
-  return { type: MessageType.RESPONSE_BLOCKCHAIN, data: JSON.stringify(getBlockChain()) };
+  return {
+    type: MessageType.RESPONSE_BLOCKCHAIN,
+    data: JSON.stringify(getBlockChain())
+  };
+}
+
+function responseTransactionPoolMsg() {
+  return {
+    type: MessageType.RESPONSE_TRANSACTION_POOL,
+    data: JSON.stringify(getTransactionPool())
+  };
 }
 
 
@@ -150,8 +211,9 @@ function connectToPeer(newPeer) {
 }
 
 module.exports = {
-  connectToPeer, 
+  connectToPeer,
   broadcastLatest,
   initP2PServer,
-  getSockets
+  getSockets,
+  broadcastTransactionPool
 }
