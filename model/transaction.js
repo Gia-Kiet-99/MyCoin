@@ -130,11 +130,11 @@ const validateBlockTransactions = (aTransactions, aUnspentTxOuts, blockIndex) =>
 const hasDuplicates = (txIns) => {
   const txOutIds = [];
   for (let i = 0; i < txIns.length; i++) {
-    if (txOutIds.includes(txIns[i].txOutId)) {
+    if (txOutIds.includes(txIns[i].txOutId + txIns[i].txOutIndex)) {
       console.log('duplicate txIn: ' + i);
       return true;
     }
-    txOutIds.push(txIns[i]);
+    txOutIds.push(txIns[i].txOutId + txIns[i].txOutIndex);
   }
   return false;
 };
@@ -191,7 +191,7 @@ const findUnspentTxOut = (transactionId, index, aUnspentTxOuts) => {
 const getCoinbaseTransaction = (address, blockIndex) => {
   const txIn = new TxIn("", blockIndex, "");
   const trans = new Transaction("", [txIn], [new TxOut(address, COINBASE_AMOUNT)]);
-  trans.id = getTransactionId(t);
+  trans.id = getTransactionId(trans);
 
   return trans;
 };
@@ -345,5 +345,5 @@ const isValidAddress = (address) => {
 module.exports = {
   processTransactions, signTxIn, getTransactionId,
   UnspentTxOut, TxIn, TxOut, getCoinbaseTransaction, getPublicKey,
-  Transaction, validateTransaction
+  Transaction, validateTransaction, COINBASE_AMOUNT, isValidAddress, hasDuplicates
 }
