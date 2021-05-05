@@ -1,6 +1,7 @@
 // const SHA256 = require('crypto-js').SHA256;
 const EC = require('elliptic').ec;
 const fs = require('fs');
+const _ = require('lodash');
 
 const { getPublicKey, getTransactionId, signTxIn, Transaction,
   TxIn, TxOut, UnspentTxOut } = require('./transaction');
@@ -16,12 +17,12 @@ const getPrivateFromWallet = () => {
 
 const getPublicFromWallet = () => {
   const privateKey = getPrivateFromWallet();
-  const key = EC.keyFromPrivate(privateKey, 'hex');
+  const key = ec.keyFromPrivate(privateKey, 'hex');
   return key.getPublic().encode('hex');
 };
 
 const generatePrivateKey = () => {
-  const keyPair = EC.genKeyPair();
+  const keyPair = ec.genKeyPair();
   const privateKey = keyPair.getPrivate();
   return privateKey.toString(16);
 };
@@ -37,6 +38,12 @@ const initWallet = () => {
   console.log('new wallet with private key created');
 };
 
+const deleteWallet = () => {
+  if (fs.existsSync(privateKeyLocation)) {
+    fs.unlinkSync(privateKeyLocation);
+  }
+}
+
 const getBalance = (address, unspentTxOuts) => {
   const balance = unspentTxOuts.reduce((sum, uTxO) => {
     if (uTxO.address === address) {
@@ -46,6 +53,10 @@ const getBalance = (address, unspentTxOuts) => {
   }, 0);
   return balance;
 };
+
+const findUnspentTxOuts = (ownerAddress, unspentTxOuts) => {
+  return unspentTxOuts.filter(uTxO => uTxO.address === ownerAddress);
+}
 
 const findTxOutsForAmount = (amount, myUnspentTxOuts) => {
   let currentAmount = 0;
@@ -71,11 +82,30 @@ const createTxOuts = (receiverAddress, myAddress, amount, leftOverAmount) => {
   }
 };
 
+const filterTxPoolTxs = (unspentTxOuts, transactionPool) => {
+  const txIns = transactionPool.map(tx => tx.txIns).flat();
+  const removable = [];
+
+  for (const unspentTxOut of unspentTxOuts) {
+    const txIn = txIns.find(aTxIn => aTxIn.txOutIndex === unspentTxOuts.txOutIndex 
+      && aTxIn.txOutId === unspentTxOuts.txOutId);
+    
+    if(txIn) {
+      removable.push(unspentTxOut);
+    }
+  }
+
+  return _.without(unspentTxOuts, ...removable);
+}
+
 const createTransaction = (receiverAddress, amount,
-  privateKey, unspentTxOuts) => {
+  privateKey, unspentTxOuts, txPool) => {
 
   const myAddress = getPublicKey(privateKey);
-  const myUnspentTxOuts = unspentTxOuts.filter((uTxO) => uTxO.address === myAddress);
+  const myUnspentTxOutsA = unspentTxOuts.filter((uTxO) => uTxO.address === myAddress);
+
+  // filter from unspentOutputs such inputs that are referenced in pool
+  const myUnspentTxOuts = filterTxPoolTxs(myUnspentTxOutsA, txPool);
 
   const { includedUnspentTxOuts, leftOverAmount } = findTxOutsForAmount(amount, myUnspentTxOuts);
 
@@ -96,6 +126,6 @@ const createTransaction = (receiverAddress, amount,
 };
 
 module.exports = {
-  createTransaction, getPublicFromWallet,
+  createTransaction, getPublicFromWallet, deleteWallet, findUnspentTxOuts,
   getPrivateFromWallet, getBalance, generatePrivateKey, initWallet
 };
