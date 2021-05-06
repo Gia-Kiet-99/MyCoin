@@ -66,4 +66,4 @@ const isValidTxForPool = (tx, aTtransactionPool) => {
   return true;
 };
 
-export {addToTransactionPool, getTransactionPool, updateTransactionPool};
+module.exports = { addToTransactionPool, getTransactionPool, updateTransactionPool };

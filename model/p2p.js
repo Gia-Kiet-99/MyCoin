@@ -1,6 +1,6 @@
 const WebSocket = require('ws');
 
-const { getLatestBlock, getBlockChain,
+const { getLatestBlock, getBlockChain, handleReceivedTransaction,
   isValidBlockStructure, addBlockToChain, replaceChain } = require('./blockchain');
 const { transaction } = require('./transaction');
 const { getTransactionPool } = require('./transaction-pool');
@@ -147,9 +147,10 @@ function queryTransactionPoolMsg() {
 
 /*------------  Response message -----------*/
 function responseLatestMsg() {
+  const latestBlock = getLatestBlock();
   return {
     type: MessageType.RESPONSE_BLOCKCHAIN,
-    data: JSON.stringify([getLatestBlock()])
+    data: JSON.stringify([latestBlock])
   };
 }
 

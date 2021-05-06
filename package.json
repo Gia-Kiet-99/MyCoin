@@ -5,16 +5,20 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node app"
+    "start": "node app",
+    "dev": "nodemon app"
   },
   "author": "Gia Kiet",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.5",
     "crypto-js": "^4.0.0",
     "dotenv": "^8.2.0",
     "elliptic": "^6.5.4",
     "express": "^4.17.1",
     "lodash": "^4.17.21",
+    "morgan": "^1.10.0",
+    "nodemon": "^2.0.7",
     "ws": "^7.4.5"
   }
 }

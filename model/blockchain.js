@@ -8,27 +8,6 @@ const { COINBASE_AMOUNT, processTransactions, getCoinbaseTransaction } = require
 const { createTransaction, findUnspentTxOuts, getBalance, getPrivateFromWallet, getPublicFromWallet } = require('./wallet');
 const { addToTransactionPool, getTransactionPool, updateTransactionPool } = require('./transaction-pool');
 
-
-const BLOCK_GENERATION_INTERVAL = 60; // second
-const DIFFICULTY_ADJUSTMENT_INTERVAL = 10; // block
-
-const genesisTransaction = {
-  'txIns': [{ 'signature': '', 'txOutId': '', 'txOutIndex': 0 }],
-  'txOuts': [{
-    'address': '049e95da2a3244a6989e2a153d11beecc02d42a70a27c498903d1e10c2add98ef612d267b52edd2474feb9e8ec560d1a541026b60d31cfaeee3cd3085a27cb3193',
-    'amount': COINBASE_AMOUNT
-  }],
-  'id': '230e3648aab43f05c3156593142b19e3cfb11e9fe02e906b8eba8e83fd720cd1'
-};
-const genesisBlock = new Block(0,
-  "c8f16271df1043e9d3ef1b7a425da2957e27a0afc7841a3f11b6c4a331f52b09",
-  "", 1620142630, [genesisTransaction], 0, 0
-);
-
-let blockchain = [genesisBlock];
-let unspentTxOuts = processTransactions(blockchain[0].data, [], 0);
-
-
 class Block {
   /**
    * 
@@ -50,6 +29,25 @@ class Block {
     this.nonce = nonce;
   }
 }
+
+const BLOCK_GENERATION_INTERVAL = 60; // second
+const DIFFICULTY_ADJUSTMENT_INTERVAL = 10; // block
+
+const genesisTransaction = {
+  'txIns': [{ 'signature': '', 'txOutId': '', 'txOutIndex': 0 }],
+  'txOuts': [{
+    'address': '049e95da2a3244a6989e2a153d11beecc02d42a70a27c498903d1e10c2add98ef612d267b52edd2474feb9e8ec560d1a541026b60d31cfaeee3cd3085a27cb3193',
+    'amount': COINBASE_AMOUNT
+  }],
+  'id': '230e3648aab43f05c3156593142b19e3cfb11e9fe02e906b8eba8e83fd720cd1'
+};
+const genesisBlock = new Block(0,
+  "c8f16271df1043e9d3ef1b7a425da2957e27a0afc7841a3f11b6c4a331f52b09",
+  "", 1620142630, [genesisTransaction], 0, 0
+);
+
+let blockchain = [genesisBlock];
+let unspentTxOuts = processTransactions(blockchain[0].data, [], 0);
 
 function getUnspentTxOuts() {
   _.cloneDeep(unspentTxOuts);
